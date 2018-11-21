@@ -4,7 +4,7 @@ Sample project that demonstrates how to dynamically load textures using [Scenefo
 
 *You can find more information about this topic in "[Dynamic textures in Sceneform](https://medium.com/@yakivmospan/dynamic-textures-in-sceneform-98d7a2d35406)" article on medium.*
 
-<img src="/assets/sample.gif" width="50%">
+<img src="/assets/sample.gif" width="30%">
 
 ## Requirements
 
