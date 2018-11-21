@@ -1,0 +1,62 @@
+{
+  materials: [
+    {
+      name: 'Material',
+      parameters: [
+        {
+          baseColorMap: 'DiffuseMap',
+        },
+        {
+          normalMap: 'NormalMap',
+        },
+        {
+          metallicMap: 'MetallicMap',
+        },
+        {
+          roughnessMap: 'RoughnessMap',
+        },
+      ],
+      source: 'sampledata/materials/pbr_material.mat',
+    },
+  ],
+  model: {
+    attributes: [
+      'Position',
+      'Orientation',
+    ],
+    collision: {},
+    file: 'sampledata/materials/custom_material.obj',
+    name: 'custom_material',
+    recenter: 'root',
+    scale: 0.5,
+  },
+  samplers: [
+      {
+          file:'src/main/res/raw/custom_material_default_diffuse.jpg',
+          name: "DiffuseMap",
+      },
+      {
+          file:'src/main/res/raw/custom_material_default_metallic.jpg',
+          name: "MetallicMap",
+          params: {
+              usage_type: 'Data',
+          }
+      },
+      {
+          file:'src/main/res/raw/custom_material_default_roughness.jpg',
+          name: "RoughnessMap",
+          params: {
+              usage_type: 'Data',
+          }
+      },
+      {
+          file:'src/main/res/raw/custom_material_default_normal.jpg',
+          name: "NormalMap",
+          params: {
+              usage_type: 'Normal',
+          }
+      },
+    ],
+
+  version: '0.52:1',
+}

@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Texture Switcher</string>
+    <string name="color_text">Color</string>
+    <string name="metallic_text">Metallic</string>
+    <string name="roughness_text">Roughness</string>
+    <string name="normal_text">Normal</string>
+    <string name="reset_material_text">Reset Material</string>
+    <string name="set_color">Set color</string>
+    <string name="reset_color">Reset color</string>
+    <string name="set_metallic">Set metallic</string>
+    <string name="reset_metallic">Reset metallic</string>
+    <string name="set_roughness">Set roughness</string>
+    <string name="reset_roughness">Reset roughness</string>
+    <string name="set_normal">Set normal</string>
+    <string name="reset_normal">Reset normal</string>
+</resources>
