@@ -8,27 +8,30 @@ import android.view.View
 import android.view.ViewGroup
 
 class ListFragment: Fragment() {
-    private val cubeCardView: CardView? by lazy { view?.findViewById<CardView>(R.id.cube_model_view) }
-    private val houseCardView: CardView? by lazy { view?.findViewById<CardView>(R.id.converse_model_view) }
+    private lateinit var cubeCardView: CardView
+    private lateinit var houseCardView: CardView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.list_fragment, container, false)
+        val view = inflater.inflate(R.layout.list_fragment, container, false)
+        cubeCardView = view.findViewById(R.id.cube_model_view)
+        houseCardView = view.findViewById(R.id.converse_model_view)
+        return view
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        cubeCardView?.setOnClickListener {
-           setFragment("cube.sfb")
+        cubeCardView.setOnClickListener {
+           setFragment("cube.sfb", DYNAMIC_TEXTURE_TYPE, "textures")
         }
 
-        houseCardView?.setOnClickListener {
-            setFragment("converse_obj.sfb")
+        houseCardView.setOnClickListener {
+            setFragment("converse_obj.sfb", SUBMESHES_TYPE, "textures")
         }
     }
 
-    private fun setFragment(sourceString: String){
-        val fragment = ArExperienceFragment.newInstance(sourceString)
+    private fun setFragment(sourceString: String, modelType: Int, textureAssetFolder: String){
+        val fragment = ArExperienceFragment.newInstance(sourceString, modelType, textureAssetFolder)
         fragmentManager
                 ?.beginTransaction()
                 ?.replace(R.id.root, fragment)

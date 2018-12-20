@@ -21,16 +21,17 @@ import com.google.ar.core.HitResult
 import com.google.ar.core.Plane
 import com.google.ar.sceneform.AnchorNode
 import com.google.ar.sceneform.rendering.ModelRenderable
-import com.google.ar.sceneform.rendering.Texture
 import com.google.ar.sceneform.ux.ArFragment
 import com.google.ar.sceneform.ux.TransformableNode
 import com.google.gson.Gson
-import kotlinx.android.synthetic.main.ar_experience_fragment.*
 import java.util.concurrent.CompletableFuture
 
 
 private const val MIN_OPENGL_VERSION = 3.0
 private const val TAG = "ArExperienceFragment"
+
+const val DYNAMIC_TEXTURE_TYPE = 1
+const val SUBMESHES_TYPE = 2
 
 class ArExperienceFragment: Fragment(){
     private lateinit var arFragment: ArFragment
@@ -125,18 +126,30 @@ class ArExperienceFragment: Fragment(){
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         val sourcePath: String?
+        val modelType: Int
+        val textureFolder: String?
         if (arguments != null){
-            sourcePath = arguments?.getString("modelPath")
-            if (sourcePath == null){
-                Toast.makeText(requireContext(), "model path is null", Toast.LENGTH_LONG).show()
-                requireActivity().onBackPressed()
-            } else {
-                if (sourcePath.contains("converse_obj")){
-                    view?.findViewById<LinearLayout>(R.id.buttons_layout)?.visibility = View.GONE
-                } else if (sourcePath.contains("cube")){
-                    view?.findViewById<LinearLayout>(R.id.buttons_layout)?.visibility = View.VISIBLE
+            sourcePath = arguments!!.getString("modelPath")
+            modelType = arguments!!.getInt("modelType")
+            textureFolder = arguments!!.getString("textureAssetFolder")
+            when {
+                sourcePath == null -> {
+                    Toast.makeText(requireContext(), "model path is unspecified", Toast.LENGTH_LONG).show()
                 }
-                createRenderable(sourcePath)
+                textureFolder == null -> {
+                    Toast.makeText(requireContext(), "textures folder is unspecified", Toast.LENGTH_LONG).show()
+                }
+                modelType != DYNAMIC_TEXTURE_TYPE && modelType != SUBMESHES_TYPE ->{
+                    Toast.makeText(requireContext(), "model type is inappropriate", Toast.LENGTH_LONG).show()
+                }
+                else -> {
+                    if (modelType == SUBMESHES_TYPE)
+                        view?.findViewById<LinearLayout>(R.id.buttons_layout)?.visibility = View.GONE
+                    else {
+                        view?.findViewById<LinearLayout>(R.id.buttons_layout)?.visibility = View.VISIBLE
+                    }
+                    createRenderable(sourcePath, modelType, textureFolder)
+                }
             }
         } else {
             Toast.makeText(requireContext(), "You should pass parameters", Toast.LENGTH_LONG).show()
@@ -145,51 +158,69 @@ class ArExperienceFragment: Fragment(){
 
     }
 
-    private fun createRenderable(modelPath: String){
+    private fun createRenderable(modelPath: String, modelType: Int, textureFolder: String){
+        val modelName = modelPath.substringAfterLast("/").substringBeforeLast(".")
+
         renderableFuture = ModelRenderable.builder()
                 .setSource(requireContext(), Uri.parse(modelPath))
                 .build()
 
-        if (modelPath.contains("cube.sfb")){
-            materialFuture = CustomMaterial.build(requireContext()) {
-                baseColorSource = Uri.parse("textures/cube_diffuse.jpg")
-                metallicSource = Uri.parse("textures/cube_metallic.jpg")
-                roughnessSource = Uri.parse("textures/cube_roughness.jpg")
-                normalSource = Uri.parse("textures/cube_normal.jpg")
+        when (modelType){
+            DYNAMIC_TEXTURE_TYPE -> {
+
+                val textureList = requireContext().assets.list(textureFolder)?. filter { it.contains(modelName) }
+                if (textureList != null){
+                    materialFuture = CustomMaterial.build(requireContext()) {
+                        baseColorSource = createUri(textureList, textureFolder, "_diffuse")
+                        metallicSource = createUri(textureList, textureFolder, "_metallic")
+                        roughnessSource = createUri(textureList, textureFolder, "_roughness")
+                        normalSource = createUri(textureList, textureFolder, "_normal")
+                    }
+                }
+                renderableFuture.thenAcceptBoth(materialFuture) { renderableResult, materialResult ->
+                    customMaterial = materialResult
+                    renderableModel = renderableResult
+                    renderableModel.material = customMaterial.value
+                }
             }
+            SUBMESHES_TYPE -> {
+                renderableFuture.thenAccept { renderable ->
+                    renderableModel = renderable
 
-            renderableFuture.thenAcceptBoth(materialFuture) { renderableResult, materialResult ->
-                customMaterial = materialResult
-                renderableModel = renderableResult
-                renderableModel.material = customMaterial.value
-            }
-        }else if (modelPath.contains("converse_obj.sfb")){
-            renderableFuture.thenAccept { renderable ->
-                renderableModel = renderable
+                    val meshes = Gson().fromJson(requireContext().assets.open("${modelName}_meshes.json")
+                            .bufferedReader(),
+                            MeshList::class.java)
 
-                val meshes = Gson().fromJson(requireContext().assets.open("converse_obj_meshes.json")
-                        .bufferedReader(),
-                        MeshList::class.java)
+                    for (i in 0 until renderableModel.submeshCount){
+                        val materialName = meshes.list.find { it.meshIndex == i }?.materialName
 
-                for (i in 0 until renderableModel.submeshCount){
-                    val materialName = meshes.list.find { it.meshIndex == i }?.materialName
+                        val textureList: List<String>? = if (!materialName.isNullOrBlank()) {
+                            requireContext().assets.list(textureFolder)?.filter { it.contains(materialName) }
+                        } else {
+                            null
+                        }
 
-                    val textureFilename = context?.assets?.list("textures")?.find { it.contains("${materialName}_diffuse") }
-                    if (textureFilename != null){
-                        CustomMaterial.build(requireContext()) {
-                            baseColorSource = Uri.parse("textures/$textureFilename")
-                            metallicSource = Uri.parse("")
-                            roughnessSource = Uri.parse("")
-                            normalSource = Uri.parse("")
-                        }.thenAccept { meshMaterial  ->
-                            meshMaterial.switchBaseColor()
-                            renderableModel.setMaterial(i, meshMaterial.value)
+                        if (!textureList.isNullOrEmpty()){
+                            CustomMaterial.build(requireContext()) {
+                                baseColorSource = createUri(textureList, textureFolder, "_diffuse")
+                                metallicSource = createUri(textureList, textureFolder, "_metallic")
+                                roughnessSource = createUri(textureList, textureFolder, "_roughness")
+                                normalSource = createUri(textureList, textureFolder, "_normal")
+                            }.thenAccept { meshMaterial  ->
+                                meshMaterial.switchBaseColor()
+                                renderableModel.setMaterial(i, meshMaterial.value)
+                            }
                         }
                     }
                 }
             }
+            else -> {
+                Toast.makeText(requireContext(), "pass correct modelType value", Toast.LENGTH_LONG).show()
+                requireActivity().onBackPressed()
+            }
         }
     }
+
 
     @SuppressLint("ObsoleteSdkInt")
     private fun checkIsSupportedDeviceOrFinish(activity: Activity): Boolean {
@@ -212,10 +243,11 @@ class ArExperienceFragment: Fragment(){
     }
 
     companion object {
-        fun newInstance(modelPath: String): ArExperienceFragment{
+        fun newInstance(modelPath: String, modelType: Int, textureAssetFolder: String): ArExperienceFragment{
             val bundle = Bundle()
             bundle.putString("modelPath", modelPath)
-
+            bundle.putInt("modelType", modelType)
+            bundle.putString("textureAssetFolder", textureAssetFolder)
             val fragment = ArExperienceFragment()
             fragment.arguments = bundle
             return fragment
