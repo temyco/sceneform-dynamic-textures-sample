@@ -41,6 +41,10 @@ class ArExperienceFragment: Fragment(){
     private lateinit var normalButton: Button
     private lateinit var resetMaterialButton: Button
 
+    private var sourcePath: String? = null
+    private var modelType: Int = 0
+    private var textureFolder: String? = null
+
     private lateinit var renderableModel: ModelRenderable
 
     private lateinit var renderableFuture: CompletableFuture<ModelRenderable>
@@ -125,13 +129,8 @@ class ArExperienceFragment: Fragment(){
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        val sourcePath: String?
-        val modelType: Int
-        val textureFolder: String?
         if (arguments != null){
-            sourcePath = arguments!!.getString("modelPath")
-            modelType = arguments!!.getInt("modelType")
-            textureFolder = arguments!!.getString("textureAssetFolder")
+            getArguments(arguments!!)
             when {
                 sourcePath == null -> {
                     Toast.makeText(requireContext(), "model path is unspecified", Toast.LENGTH_LONG).show()
@@ -148,7 +147,7 @@ class ArExperienceFragment: Fragment(){
                     else {
                         view?.findViewById<LinearLayout>(R.id.buttons_layout)?.visibility = View.VISIBLE
                     }
-                    createRenderable(sourcePath, modelType, textureFolder)
+                    createRenderable(sourcePath!!, modelType, textureFolder!!)
                 }
             }
         } else {
@@ -167,52 +166,10 @@ class ArExperienceFragment: Fragment(){
 
         when (modelType){
             DYNAMIC_TEXTURE_TYPE -> {
-
-                val textureList = requireContext().assets.list(textureFolder)?. filter { it.contains(modelName) }
-                if (textureList != null){
-                    materialFuture = CustomMaterial.build(requireContext()) {
-                        baseColorSource = createUri(textureList, textureFolder, "_diffuse")
-                        metallicSource = createUri(textureList, textureFolder, "_metallic")
-                        roughnessSource = createUri(textureList, textureFolder, "_roughness")
-                        normalSource = createUri(textureList, textureFolder, "_normal")
-                    }
-                }
-                renderableFuture.thenAcceptBoth(materialFuture) { renderableResult, materialResult ->
-                    customMaterial = materialResult
-                    renderableModel = renderableResult
-                    renderableModel.material = customMaterial.value
-                }
+                createDynamicTextureMaterial(modelName, textureFolder)
             }
             SUBMESHES_TYPE -> {
-                renderableFuture.thenAccept { renderable ->
-                    renderableModel = renderable
-
-                    val meshes = Gson().fromJson(requireContext().assets.open("${modelName}_meshes.json")
-                            .bufferedReader(),
-                            MeshList::class.java)
-
-                    for (i in 0 until renderableModel.submeshCount){
-                        val materialName = meshes.list.find { it.meshIndex == i }?.materialName
-
-                        val textureList: List<String>? = if (!materialName.isNullOrBlank()) {
-                            requireContext().assets.list(textureFolder)?.filter { it.contains(materialName) }
-                        } else {
-                            null
-                        }
-
-                        if (!textureList.isNullOrEmpty()){
-                            CustomMaterial.build(requireContext()) {
-                                baseColorSource = createUri(textureList, textureFolder, "_diffuse")
-                                metallicSource = createUri(textureList, textureFolder, "_metallic")
-                                roughnessSource = createUri(textureList, textureFolder, "_roughness")
-                                normalSource = createUri(textureList, textureFolder, "_normal")
-                            }.thenAccept { meshMaterial  ->
-                                meshMaterial.switchBaseColor()
-                                renderableModel.setMaterial(i, meshMaterial.value)
-                            }
-                        }
-                    }
-                }
+                createSubmeshMaterials(modelName, textureFolder)
             }
             else -> {
                 Toast.makeText(requireContext(), "pass correct modelType value", Toast.LENGTH_LONG).show()
@@ -221,6 +178,60 @@ class ArExperienceFragment: Fragment(){
         }
     }
 
+    private fun getArguments(bundle: Bundle){
+        sourcePath = bundle.getString("modelPath")
+        modelType = bundle.getInt("modelType")
+        textureFolder = bundle.getString("textureAssetFolder")
+    }
+
+    private fun createDynamicTextureMaterial(modelName: String, textureFolder: String){
+        val textureList = requireContext().assets.list(textureFolder)?. filter { it.contains(modelName) }
+        if (textureList != null){
+            materialFuture = CustomMaterial.build(requireContext()) {
+                baseColorSource = createUri(textureList, textureFolder, "_diffuse")
+                metallicSource = createUri(textureList, textureFolder, "_metallic")
+                roughnessSource = createUri(textureList, textureFolder, "_roughness")
+                normalSource = createUri(textureList, textureFolder, "_normal")
+            }
+        }
+        renderableFuture.thenAcceptBoth(materialFuture) { renderableResult, materialResult ->
+            customMaterial = materialResult
+            renderableModel = renderableResult
+            renderableModel.material = customMaterial.value
+        }
+    }
+
+    private fun createSubmeshMaterials(modelName: String, textureFolder: String){
+        renderableFuture.thenAccept { renderable ->
+            renderableModel = renderable
+
+            val meshes = Gson().fromJson(requireContext().assets.open("${modelName}_meshes.json")
+                    .bufferedReader(),
+                    MeshList::class.java)
+
+            for (i in 0 until renderableModel.submeshCount){
+                val materialName = meshes.list.find { it.meshIndex == i }?.materialName
+
+                val textureList: List<String>? = if (!materialName.isNullOrBlank()) {
+                    requireContext().assets.list(textureFolder)?.filter { it.contains(materialName) }
+                } else {
+                    null
+                }
+
+                if (!textureList.isNullOrEmpty()){
+                    CustomMaterial.build(requireContext()) {
+                        baseColorSource = createUri(textureList, textureFolder, "_diffuse")
+                        metallicSource = createUri(textureList, textureFolder, "_metallic")
+                        roughnessSource = createUri(textureList, textureFolder, "_roughness")
+                        normalSource = createUri(textureList, textureFolder, "_normal")
+                    }.thenAccept { meshMaterial  ->
+                        meshMaterial.switchBaseColor()
+                        renderableModel.setMaterial(i, meshMaterial.value)
+                    }
+                }
+            }
+        }
+    }
 
     @SuppressLint("ObsoleteSdkInt")
     private fun checkIsSupportedDeviceOrFinish(activity: Activity): Boolean {
