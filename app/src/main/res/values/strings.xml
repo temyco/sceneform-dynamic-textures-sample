@@ -13,8 +13,6 @@
     <string name="reset_roughness">Reset roughness</string>
     <string name="set_normal">Set normal</string>
     <string name="reset_normal">Reset normal</string>
-    <string name="converse_title">Converse</string>
-    <string name="home_subtitle">Model with multi-meshes</string>
-    <string name="cube_title">Cube</string>
-    <string name="cube_subtitle">Model with one mesh</string>
+    <string name="title_text">Title</string>
+    <string name="subtitle_text">Subtitle</string>
 </resources>
