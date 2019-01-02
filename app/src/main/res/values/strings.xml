@@ -13,4 +13,6 @@
     <string name="reset_roughness">Reset roughness</string>
     <string name="set_normal">Set normal</string>
     <string name="reset_normal">Reset normal</string>
+    <string name="title_text">Title</string>
+    <string name="subtitle_text">Subtitle</string>
 </resources>

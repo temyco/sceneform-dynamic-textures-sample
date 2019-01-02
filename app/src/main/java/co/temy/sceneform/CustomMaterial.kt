@@ -9,6 +9,7 @@ import com.google.ar.sceneform.rendering.Texture
 import com.google.ar.sceneform.utilities.AndroidPreconditions
 import java.util.concurrent.CompletableFuture
 
+private const val TAG = "CustomMaterial"
 class CustomMaterial private constructor(
     val value: Material,
     private val baseColorMap: Texture?,
